@@ -1,0 +1,59 @@
+Parameters:
+
+  VpcId:
+    Description: "Enter VPC id"
+    Type: String
+  SubnetId:
+    Description: "Enter the subnet Id in which Network load balancer will be deployed"
+    Type: String
+  InstanceId:
+    Description: "Enter the Instance Id (Target Instance)"
+    Type: String
+
+Resources:
+
+  NetworkLoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: Prod-Network-Loadbalancer
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      Type: network
+      Subnets:
+        - !Ref SubnetId
+      Tags:
+        - Key: Environment
+          Value: Production
+
+  NetworkLoadBalancerTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: Prod-Network-Loadbalancer-TG
+      Port: 80
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: instance
+    # ProtocolVersion: HTTP2
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+   #  HealthCheckTimeoutSeconds: 10
+   #  HealthyThresholdCount: 3
+   #  TargetGroupAttributes:
+   #    - Key: deregistration_delay.timeout_seconds
+   #      Value: 60
+      Targets:
+        - Id: !Ref InstanceId
+          Port: 80
+   #      AvailabilityZone: us-east-1a
+
+  NetworkLoadBalancerListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      Port: 80
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref NetworkLoadBalancer
