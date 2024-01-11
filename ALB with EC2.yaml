@@ -20,7 +20,7 @@ Parameters:
 
 Resources:
 
- BeneteauSecurityGroup:
+ProdSecurityGroup:
    Type: AWS::EC2::SecurityGroup
    Properties:
       GroupDescription: Allow http to client host
@@ -35,30 +35,30 @@ Resources:
         ToPort: 443
         CidrIp: 0.0.0.0/0
       Tags:
-       - Key: beneteaurendezvous
-         Value: Website
+       - Key: Environment
+         Value: Production
 
 
 
- BeneteauEC2Instance:
+ ProdEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
       ImageId: "ami-08e4e35cccc6189f4"
     #  DisableApiTermination: true
-      KeyName: "beneteau-grand-trawler"
+      KeyName: "web-application"
       SubnetId: !Ref SubnetId1
       SecurityGroupIds:
-      - !Ref BeneteauSecurityGroup
+      - !Ref DemoSecurityGroup
       Tags:
-       - Key: beneteaurendezvous
-         Value: Website
+       - Key: Environment
+         Value: Production
 
  ApplicationLoadBalancer:
    # for ALB atleast two subnets at two different AZs should be mentioned.
      Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
      Properties:
-       Name: beneteaurendezvous-ALB
+       Name: AppLoadBalancer
        IpAddressType: ipv4
        Scheme: internet-facing
        Type: application
@@ -66,14 +66,14 @@ Resources:
          - !Ref SubnetId1
          - !Ref SubnetId2
        Tags:
-         - Key: beneteaurendezvous
-           Value: Website
+         - Key: Environment
+           Value: Production
 
  ApplicationLoadBalancerTargetGroup:
    # for ALB only HTTP AND HTTPS protocol is allowed
      Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
      Properties:
-       Name: beneteaurendezvous-targetgroup
+       Name: AppLoadbalancer-targetgroup
        Port: 80
        Protocol: HTTP
        VpcId: !Ref VpcId
@@ -87,7 +87,7 @@ Resources:
        HealthCheckTimeoutSeconds: 5
        HealthyThresholdCount: 3
        Targets:
-         - Id: !Ref BeneteauEC2Instance
+         - Id: !Ref ProdEC2Instance
            Port: 80
 
 
