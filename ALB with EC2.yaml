@@ -1,0 +1,103 @@
+Parameters:
+ SubnetId1:
+   Description: "Please enter the subnet id1 in which ec2 instance will be launched"
+   Type: String
+ SubnetId2:
+   Description: "Please enter the subnet id2 in which ec2 instance will be launched"
+   Type: String
+ InstanceType:
+   Description: "Please enter the Instance type"
+   Type: String
+ VpcId:
+   Description: "Enter VPC id (Mandatory when Security Groups have outbound rules)"
+   Type: String
+
+#subnet-01a326075e1075b29
+#subnet-095bab36688be3aa4
+#t3.medium
+#vpc-0eab8a5fe98302f41
+
+
+Resources:
+
+ BeneteauSecurityGroup:
+   Type: AWS::EC2::SecurityGroup
+   Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      Tags:
+       - Key: beneteaurendezvous
+         Value: Website
+
+
+
+ BeneteauEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: "ami-08e4e35cccc6189f4"
+    #  DisableApiTermination: true
+      KeyName: "beneteau-grand-trawler"
+      SubnetId: !Ref SubnetId1
+      SecurityGroupIds:
+      - !Ref BeneteauSecurityGroup
+      Tags:
+       - Key: beneteaurendezvous
+         Value: Website
+
+ ApplicationLoadBalancer:
+   # for ALB atleast two subnets at two different AZs should be mentioned.
+     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+     Properties:
+       Name: beneteaurendezvous-ALB
+       IpAddressType: ipv4
+       Scheme: internet-facing
+       Type: application
+       Subnets:
+         - !Ref SubnetId1
+         - !Ref SubnetId2
+       Tags:
+         - Key: beneteaurendezvous
+           Value: Website
+
+ ApplicationLoadBalancerTargetGroup:
+   # for ALB only HTTP AND HTTPS protocol is allowed
+     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+     Properties:
+       Name: beneteaurendezvous-targetgroup
+       Port: 80
+       Protocol: HTTP
+       VpcId: !Ref VpcId
+       TargetType: instance
+       ProtocolVersion: HTTP1
+       HealthCheckEnabled: true
+       HealthCheckIntervalSeconds: 10
+       HealthCheckPort: 80
+       HealthCheckProtocol: HTTP
+  # Health check timeout must be smaller than the interval
+       HealthCheckTimeoutSeconds: 5
+       HealthyThresholdCount: 3
+       Targets:
+         - Id: !Ref BeneteauEC2Instance
+           Port: 80
+
+
+ ApplicationLoadBalancerListener:
+     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+     Properties:
+       Port: 80
+  # HTTP Protocol not supported for HTTP2 Protocolversion
+       Protocol: HTTP
+       DefaultActions:
+         - Type: forward
+           TargetGroupArn: !Ref ApplicationLoadBalancerTargetGroup
+       LoadBalancerArn: !Ref ApplicationLoadBalancer
